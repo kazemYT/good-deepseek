@@ -5225,3 +5225,5 @@ tr:hover .bds-row-hide-btn:hover {
   line-height: 1.4;
   color: var(--bds-text-secondary, #6b6b6b);
 }
+/* Avoid flashing large service JSON while the native composer accepts an auto-send. */
+.bds-auto-inserting { opacity: 0 !important; transition: none !important; }

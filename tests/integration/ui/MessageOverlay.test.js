@@ -54,7 +54,7 @@ describe("MessageOverlay integration", () => {
     });
     await flushUi();
 
-    expect(target.textContent).toContain("Searching DuckDuckGo Lite...");
+    expect(target.textContent).toContain("Searching Google...");
     expect(target.textContent).toContain("Search Results: deepseek api docs");
     expect(target.textContent).toContain("1 results found");
     expect(target.textContent).toContain("via Bing");

@@ -64,6 +64,9 @@
       "sectionMcpServers": "سرورهای MCP"
     },
     "settings": {
+    "autoContinue": "ادامه خودکار پاسخ‌ها",
+    "deepResearchAutoAgree": "تأیید خودکار طرح‌های Deep Research",
+    "hideAutoPromptInsertion": "پنهان‌کردن درج متن سیستمی و JSON",
       "generalSettings": "تنظیمات عمومی",
       "systemPrompts": "پرامپت‌های سیستمی",
       "defaultPromptName": "پیش‌فرض (پنهان)",
@@ -160,6 +163,7 @@
       "providerMoveUp": "انتقال ارائه‌دهنده به بالا",
       "providerMoveDown": "انتقال ارائه‌دهنده به پایین",
       "searchProvider": {
+      "google": "Google",
         "ddgLite": "DuckDuckGo (Lite)",
         "ddgHtml": "DuckDuckGo (HTML)",
         "bing": "Bing"

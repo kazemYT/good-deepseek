@@ -41,8 +41,14 @@ export const PPTX_SKILL = `
      { name: "Sales", labels: ["Q1","Q2","Q3","Q4"], values: [100, 150, 130, 200] }
    ], { x: 1, y: 1, w: 8, h: 4 });
 
-   // Image from URL:
-   // slide.addImage({ path: "https://example.com/image.png", x: 1, y: 1, w: 4, h: 3 });
+   // Image from a direct HTTP(S) URL (downloaded and embedded before export):
+   slide.addImage({ path: "https://example.com/image.png", x: 8, y: 1.5, w: 4, h: 3 });
+
+   // Or find a real illustration on Wikimedia Commons (no invented URLs):
+   const image = await bdsImage("solar panels rooftop");
+   const scale = Math.min(4 / image.width, 3 / image.height);
+   slide.addImage({ data: image.data, x: 8, y: 1.5, w: image.width * scale, h: image.height * scale });
+   slide.addText(image.sourceUrl, { x: 8, y: 4.6, w: 4, h: 0.4, fontSize: 8 });
 
    // Shape:
    slide.addShape(pptx.shapes.RECTANGLE, { x: 1, y: 1, w: 4, h: 3, fill: { color: "4472C4" } });
@@ -50,6 +56,15 @@ export const PPTX_SKILL = `
 5. SAVE — ALWAYS end with:
    await pptx.writeFile({ fileName: "Presentation.pptx" });
    // CRITICAL: Without this call, no file is generated. Must be awaited.
+
+### ILLUSTRATED PRESENTATIONS:
+- By default, support every substantive slide with a relevant real image, diagram or chart. Avoid text-only decks unless the user asks for one.
+- Use await bdsImage("specific subject") to search Wikimedia Commons and load an embeddable image. Returns { data, width, height, title, sourceUrl }. Always await it; do not invent image URLs or base64.
+- Direct PNG/JPEG/GIF URLs in slide.addImage({ path: ... }) are automatically downloaded with extension permissions and embedded in the PPTX, so the downloaded file works offline.
+- Keep aspect ratios: scale = Math.min(boxWidth / image.width, boxHeight / image.height), then use w = image.width * scale and h = image.height * scale. Keep text and images in separate columns.
+- Credit the sourceUrl on the slide or on a final sources slide and check the source page for license/attribution requirements. Do not claim that images prove unsupported facts.
+- If image search/download fails, try a narrower subject or use an explicitly labelled diagram/chart; do not silently substitute an unrelated photo.
+- bdsImage is the supported image-loading helper; do not call fetch yourself.
 
 ### COMPLETE MINIMAL EXAMPLE:
 const pptx = new PptxGenJS();
@@ -88,7 +103,7 @@ await pptx.writeFile({ fileName: "ProjectPlan.pptx" });
 - ✗ Not calling \`pptx.writeFile\` at all — the most common reason for "no output"
 
 ### POSITIONING HELP:
-- Slide dimensions: LAYOUT_WIDE = 10" x 5.625", LAYOUT_STANDARD = 10" x 7.5"
+- Slide dimensions: LAYOUT_WIDE = 13.333" x 7.5", LAYOUT_STANDARD = 10" x 7.5"
 - All positions in inches: { x: 0.5, y: 0.5, w: 9, h: 1 }
 - (0,0) = top-left corner
 

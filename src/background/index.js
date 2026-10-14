@@ -1,4 +1,5 @@
 import "./api-proxy.js";
+import { fetchPresentationImage } from "./image-fetch.js";
 import { fetchTranscript } from "youtube-transcript";
 import {
   DEFAULT_GITHUB_COMMIT_COUNT,
@@ -36,6 +37,13 @@ export {
 setupContextMenus();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "bds-fetch-presentation-image") {
+    fetchPresentationImage(message.url)
+      .then(data => sendResponse({ ok: true, data }))
+      .catch(error => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message.type === "bds-get-my-tab-id") {
     sendResponse({ tabId: sender.tab?.id || null });
     return true;

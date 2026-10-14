@@ -111,6 +111,21 @@ The extension adds a "+" button next to the chat input, offering:
 - Import a GitHub repository (fetches and packages the repo as a text file, with optional GitHub token support for private repositories).
 - Fetch a web page (converts the main content to markdown).
 
+### Research automation and illustrated presentations
+
+In **Settings → Advanced → Deep Research**, three switches are enabled by default:
+- **Auto-continue replies** clicks DeepSeek's native **Continue** control on the latest reply as soon as it is available. It ignores disabled/hidden controls, older messages and extension cards, and does not click during an active completion.
+- **Auto-agree to Deep Research plans** starts a valid plan for the active research run without waiting for Approve. Turn it off to review/revise plans manually. Replayed, completed and cancelled runs are not restarted; the context budget guard is unchanged.
+- **Hide automatic service-text insertion** temporarily conceals the composer text while the extension inserts and sends its service prompts/JSON. Normal editing stays visible; failed sends are revealed for recovery. This is a visual improvement, not a privacy boundary: service data still goes to DeepSeek and may exist in chat history.
+
+New/default search configurations try **Google → Bing → DuckDuckGo Lite → DuckDuckGo HTML**. Reorder or disable providers in the same settings section; existing saved provider choices are preserved, so enable Google and move it first if you already customized the list. Google challenges or empty results fall back to the next enabled provider. No search API key is required.
+
+Presentation instructions now request relevant illustrations, diagrams or charts for substantive slides by default (including Russian presentation requests). The PPTX sandbox supports:
+- `const image = await bdsImage("specific subject")` — find an image on Wikimedia Commons and return `{ data, width, height, title, sourceUrl }` for `slide.addImage({ data: image.data, ... })`. Use the dimensions to preserve aspect ratio and credit/check the source's license.
+- `slide.addImage({ path: "https://example.com/photo.png", x: 1, y: 1, w: 4, h: 3 })` — direct PNG/JPEG/GIF URLs are downloaded and embedded before `await pptx.writeFile(...)`, rather than depending on sandbox CORS or leaving external links in the downloaded file. Downloads are cached per presentation and limited to 10 MB per image with timeouts; failures are reported, not silently dropped.
+
+PPTX browser support is unchanged: Chrome/Chromium and Android; Firefox still displays its existing unsupported-browser notice.
+
 ## Installation
 
 ### Recommended: Browser Stores

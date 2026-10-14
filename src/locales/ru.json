@@ -64,6 +64,9 @@
       "sectionMcpServers": "MCP серверы"
     },
     "settings": {
+    "autoContinue": "Автоматически нажимать Continue",
+    "deepResearchAutoAgree": "Автосогласие с планом Deep Research",
+    "hideAutoPromptInsertion": "Скрывать вставку служебного текста и JSON",
       "generalSettings": "Основные настройки",
       "systemPrompts": "Системные промпты",
       "defaultPromptName": "По умолчанию (скрытый)",
@@ -154,6 +157,7 @@
       "providerMoveUp": "Переместить выше",
       "providerMoveDown": "Переместить ниже",
       "searchProvider": {
+      "google": "Google",
         "ddgLite": "DuckDuckGo (Lite)",
         "ddgHtml": "DuckDuckGo (HTML)",
         "bing": "Bing"

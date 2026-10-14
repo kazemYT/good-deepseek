@@ -72,6 +72,32 @@ class WebViewBridgeTest {
     // ── storage ─────────────────────────────────────────────────────────
 
     @Test
+    fun presentationImageReturnsEmbeddableData() {
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png")
+                .setBody("PNG image data"))
+        val result = JSONObject(bridge.fetch(JSONObject().apply {
+            put("type", "bds-fetch-presentation-image")
+            put("url", server.url("/illustration.png").toString())
+        }.toString()))
+        assertTrue(result.optBoolean("ok"))
+        assertEquals("data:image/png;base64," + java.util.Base64.getEncoder()
+                .encodeToString("PNG image data".toByteArray()), result.optString("data"))
+    }
+
+    @Test
+    fun presentationImageRejectsHtmlAndOversizeResponses() {
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/html").setBody("<html>captcha</html>"))
+        val payload = JSONObject().apply {
+            put("type", "bds-fetch-presentation-image")
+            put("url", server.url("/image").toString())
+        }
+        assertFalse(JSONObject(bridge.fetch(payload.toString())).optBoolean("ok"))
+        server.enqueue(MockResponse().setHeader("Content-Type", "image/png")
+                .setHeader("Content-Length", 11 * 1024 * 1024))
+        assertFalse(JSONObject(bridge.fetch(payload.toString())).optBoolean("ok"))
+    }
+
+    @Test
     fun `getStorage returns null for missing key`() {
         `when`(prefs.getString("missing", null)).thenReturn(null)
         assertNull(bridge.getStorage("missing"))

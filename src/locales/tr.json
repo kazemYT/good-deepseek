@@ -64,6 +64,9 @@
       "sectionMcpServers": "MCP Sunucuları"
     },
     "settings": {
+    "autoContinue": "Yanıtları otomatik sürdür",
+    "deepResearchAutoAgree": "Deep Research planlarını otomatik onayla",
+    "hideAutoPromptInsertion": "Otomatik sistem metni ve JSON eklemeyi gizle",
       "generalSettings": "Genel Ayarlar",
       "systemPrompts": "Sistem Yönergeleri (Prompt)",
       "defaultPromptName": "Varsayılan",
@@ -154,6 +157,7 @@
       "providerMoveUp": "Sağlayıcıyı yukarı taşı",
       "providerMoveDown": "Sağlayıcıyı aşağı taşı",
       "searchProvider": {
+      "google": "Google",
         "ddgLite": "DuckDuckGo (Lite)",
         "ddgHtml": "DuckDuckGo (HTML)",
         "bing": "Bing"

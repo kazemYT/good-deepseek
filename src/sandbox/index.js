@@ -4,6 +4,7 @@
  */
 
 import PptxGenJS from "pptxgenjs";
+import { createPresentationClass } from "../lib/pptx-images.js";
 import * as XLSX from "xlsx";
 import * as docx from "docx";
 
@@ -32,28 +33,43 @@ window.addEventListener("message", async (event) => {
   if (type === "GEN_PPTX") {
     console.log("BDS Sandbox: Received PPTX generation request", id);
     try {
-      // Intercept writeFile to capture the promise
-      const originalWriteFile = PptxGenJS.prototype.writeFile;
-      let generationPromise = null;
-      
-      PptxGenJS.prototype.writeFile = function(args) {
-        console.log("BDS Sandbox: pptx.writeFile() intercepted");
-        generationPromise = this.write({ outputType: 'base64' });
-        return generationPromise;
+      let capturedBase64 = null;
+      let imageSequence = 0;
+      const imageCache = new Map();
+      const requestImage = (query) => new Promise((resolve, reject) => {
+        // Sandboxed opaque origins need not expose crypto.randomUUID.
+        const imageId = `${id}:${++imageSequence}`;
+        const finish = () => {
+          clearTimeout(timer);
+          window.removeEventListener("message", handler);
+        };
+        const handler = (reply) => {
+          if (reply.source !== window.parent || reply.data?.type !== "PPTX_IMAGE_RESULT" ||
+              reply.data.id !== id || reply.data.imageId !== imageId) return;
+          finish();
+          if (reply.data.error) reject(new Error(reply.data.error));
+          else resolve(reply.data.image);
+        };
+        const timer = setTimeout(() => { finish(); reject(new Error("Image loading timed out.")); }, 45000);
+        window.addEventListener("message", handler);
+        window.parent.postMessage({ type: "PPTX_IMAGE_REQUEST", id, imageId, query }, "*");
+      });
+      const loadImage = (query) => {
+        if (!imageCache.has(query)) imageCache.set(query, requestImage(query));
+        return imageCache.get(query);
       };
-
-      // Execute the AI code. 
-      const func = new AsyncFunction(code);
-      await func();
-      
-      if (generationPromise) {
-        const capturedBase64 = await generationPromise;
-        window.parent.postMessage({ type: "PPTX_RESULT", base64: capturedBase64, id }, "*");
-      } else {
-        throw new Error("No PPTX data was generated. Did the script call pptx.writeFile()?");
-      }
-
-      PptxGenJS.prototype.writeFile = originalWriteFile;
+      const Presentation = createPresentationClass(PptxGenJS, loadImage, data => { capturedBase64 = data; });
+      const scopedWindow = new Proxy(window, {
+        get(target, key) {
+          if (key === "PptxGenJS" || key === "pptxgen") return Presentation;
+          if (key === "bdsImage") return loadImage;
+          return Reflect.get(target, key, target);
+        },
+      });
+      const func = new AsyncFunction("PptxGenJS", "pptxgen", "bdsImage", "window", code);
+      await func(Presentation, Presentation, loadImage, scopedWindow);
+      if (!capturedBase64) throw new Error("No PPTX data was generated. Did the script call await pptx.writeFile()?");
+      window.parent.postMessage({ type: "PPTX_RESULT", base64: capturedBase64, id }, "*");
     } catch (err) {
       console.error("BDS Sandbox Error (PPTX):", err);
       window.parent.postMessage({ type: "PPTX_ERROR", error: err.message, id }, "*");

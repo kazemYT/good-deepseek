@@ -746,12 +746,7 @@ export async function handleAutoMcpCall(serverUrl, toolName, args = {}) {
 }
 
 export async function injectPureTextAndSend(autoMessage, logLabel = "Text prompt") {
-  if (!setChatInputText(autoMessage)) {
-    console.error(`[BDS:AUTO] Failed to send ${logLabel}: chat input was not found or could not be updated.`);
-    return false;
-  }
-
-  return sendCurrentChatInput(logLabel);
+  return sendTextWithOverLimitFallbacks([autoMessage], logLabel);
 }
 
 export async function readFileText(file) {
@@ -1237,6 +1232,19 @@ function sendCurrentChatInput(logLabel = "Auto message") {
 }
 
 async function sendTextWithOverLimitFallbacks(textAttempts, logLabel) {
+  const editor = findChatEditor();
+  // Conceal only the automated insertion, not the composer controls or user drafts.
+  // A class preserves the host's inline styles, and finally also reveals failures.
+  const conceal = editor && appState.settings.hideAutoPromptInsertion;
+  if (conceal) editor.classList.add("bds-auto-inserting");
+  try {
+    return await sendTextAttempts(textAttempts, logLabel);
+  } finally {
+    if (conceal) editor.classList.remove("bds-auto-inserting");
+  }
+}
+
+async function sendTextAttempts(textAttempts, logLabel) {
   const attempts = textAttempts
     .map((text) => String(text || ""))
     .filter((text, index, arr) => text && arr.indexOf(text) === index);

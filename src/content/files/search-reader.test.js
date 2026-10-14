@@ -11,6 +11,8 @@ vi.mock("./web-reader.js", () => ({
 
 import {
   searchWeb,
+  searchWeb as searchWithDefaultProviders,
+  parseGoogleSearchResults,
   parseSearchResults,
   formatSearchResults,
   formatDeepFetchContent,
@@ -40,6 +42,10 @@ beforeEach(() => {
   fetchAndConvertWebPageMock.mockReset();
   vi.mocked(chrome.runtime.sendMessage).mockImplementation(chromeSendMessageMock);
 });
+
+function makeGoogleResultHtml(results) {
+  return results.map(r => `<div class="MjjYud"><div class="g"><a href="${r.url}"><h3>${r.title}</h3></a><div class="VwiC3b">${r.snippet || ""}</div></div></div>`).join("");
+}
 
 function ddgHref(realUrl) {
   return `//duckduckgo.com/l/?uddg=${encodeURIComponent(realUrl)}&rut=test`;
@@ -325,9 +331,10 @@ describe("formatDeepFetchContent", () => {
 describe("resolveSearchProviders", () => {
   it("exposes a stable catalog of known providers", () => {
     expect(SEARCH_PROVIDER_CATALOG).toEqual([
+      { id: "google", name: "Google", labelKey: "settings.searchProvider.google" },
+      { id: "bing", name: "Bing", labelKey: "settings.searchProvider.bing" },
       { id: "ddg-lite", name: "DuckDuckGo Lite", labelKey: "settings.searchProvider.ddgLite" },
       { id: "ddg-html", name: "DuckDuckGo HTML", labelKey: "settings.searchProvider.ddgHtml" },
-      { id: "bing", name: "Bing", labelKey: "settings.searchProvider.bing" },
     ]);
   });
 
@@ -345,11 +352,11 @@ describe("resolveSearchProviders", () => {
 
   it("returns the default order when no preference is set", () => {
     const resolved = resolveSearchProviders(undefined);
-    expect(resolved.map((p) => p.id)).toEqual(["ddg-lite", "ddg-html", "bing"]);
+    expect(resolved.map((p) => p.id)).toEqual(["google", "bing", "ddg-lite", "ddg-html"]);
   });
 
   it("returns the default order for an empty list (all providers disabled)", () => {
-    expect(resolveSearchProviders([]).map((p) => p.id)).toEqual(["ddg-lite", "ddg-html", "bing"]);
+    expect(resolveSearchProviders([]).map((p) => p.id)).toEqual(["google", "bing", "ddg-lite", "ddg-html"]);
   });
 
   it("resolves a custom user order", () => {
@@ -367,9 +374,7 @@ describe("resolveSearchProviders", () => {
 
   it("falls back to defaults when every id is unknown", () => {
     expect(resolveSearchProviders(["ask-jeeves", "alta-vista"]).map((p) => p.id)).toEqual([
-      "ddg-lite",
-      "ddg-html",
-      "bing",
+      "google", "bing", "ddg-lite", "ddg-html",
     ]);
   });
 
@@ -381,6 +386,9 @@ describe("resolveSearchProviders", () => {
 });
 
 describe("searchWeb", () => {
+  // These legacy-provider tests explicitly exercise DDG -> Bing fallbacks.
+  const searchWeb = (query, deepFetch, onStatus, options = {}) =>
+    searchWithDefaultProviders(query, deepFetch, onStatus, { providers: ["ddg-lite", "ddg-html", "bing"], ...options });
   const ON_STATUS = vi.fn();
 
   beforeEach(() => {
@@ -832,7 +840,7 @@ describe("searchWeb", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        html: makeResultHtml([
+        html: makeGoogleResultHtml([
           {
             title: "EdgeTypE/better-deepseek issue tracker 2025",
             url: "https://github.com/EdgeTypE/better-deepseek/issues",
@@ -841,15 +849,15 @@ describe("searchWeb", () => {
         ]),
       });
 
-    const result = await searchWeb(
+    const result = await searchWithDefaultProviders(
       "site:github.com better-deepseek issue tracker 2025",
       0,
       ON_STATUS
     );
 
     expect(chromeSendMessageMock).toHaveBeenCalledTimes(1);
-    expect(chromeSendMessageMock.mock.calls[0][0].url).toContain("lite.duckduckgo.com");
-    expect(result.provider).toBe("DuckDuckGo Lite");
+    expect(chromeSendMessageMock.mock.calls[0][0].url).toContain("www.google.com/search");
+    expect(result.provider).toBe("Google");
     expect(result.results[0].url).toContain("github.com");
   });
 
@@ -861,16 +869,16 @@ describe("searchWeb", () => {
       .rejects.toThrow(/site.*no.*result|no.*result.*site/i);
   });
 
-  it("normal query still starts with DuckDuckGo Lite", async () => {
+  it("normal query starts with Google by default", async () => {
     chromeSendMessageMock
-      .mockResolvedValueOnce({ ok: true, status: 200, html: makeResultHtml([
+      .mockResolvedValueOnce({ ok: true, status: 200, html: makeGoogleResultHtml([
         { title: "General", url: "https://example.com", snippet: "general result" },
       ]) });
 
-    const result = await searchWeb("general query without site constraint", 0, ON_STATUS);
+    const result = await searchWithDefaultProviders("general query without site constraint", 0, ON_STATUS);
 
-    expect(chromeSendMessageMock.mock.calls[0][0].url).toContain("lite.duckduckgo.com");
-    expect(result.provider).toBe("DuckDuckGo Lite");
+    expect(chromeSendMessageMock.mock.calls[0][0].url).toContain("www.google.com/search");
+    expect(result.provider).toBe("Google");
   });
 });
 
@@ -928,7 +936,7 @@ describe("MCP search providers", () => {
 
   it("appends MCP servers to the settings catalog", () => {
     const catalog = buildSearchProviderCatalog([EXA_SERVER]);
-    expect(catalog.map((p) => p.id)).toEqual(["ddg-lite", "ddg-html", "bing", "mcp:srv1"]);
+    expect(catalog.map((p) => p.id)).toEqual(["google", "bing", "ddg-lite", "ddg-html", "mcp:srv1"]);
     expect(catalog[0].kind).toBe("http");
     expect(catalog.at(-1)).toEqual({
       id: "mcp:srv1",
@@ -1168,5 +1176,38 @@ describe("MCP search providers", () => {
     });
 
     expect(result.provider).toBe("DuckDuckGo Lite");
+  });
+});
+
+describe('Google search provider', () => {
+  it('parses the basic HTML layout requested with gbv=1', () => {
+    expect(parseGoogleSearchResults(`<div class="Gx5Zad"><div class="kCrYT"><a href="/url?q=https://example.com/basic"><div class="BNeawe vvjwJb AP7Wnd">Basic title</div></a></div><div class="BNeawe s3v9rd AP7Wnd">Basic snippet</div></div>`)).toEqual([
+      { title: 'Basic title', url: 'https://example.com/basic', snippet: 'Basic snippet' },
+    ]);
+  });
+  it('parses direct and redirected results, excludes ads and Google navigation, deduplicates URLs', () => {
+    const html = makeGoogleResultHtml([
+      { title: 'Solar energy review', url: 'https://example.com/solar', snippet: 'Independent evidence' },
+      { title: 'Redirected', url: '/url?q=https%3A%2F%2Fother.com%2Farticle&sa=U', snippet: 'Detail' },
+      { title: 'Duplicate', url: 'https://example.com/solar' },
+      { title: 'Navigation', url: '/search?q=solar' },
+      { title: 'Bad protocol', url: 'javascript:alert(1)' },
+    ]) + '<div id="tads"><a href="https://ads.example.com"><h3>Advertisement</h3></a></div>';
+    expect(parseGoogleSearchResults(html)).toEqual([
+      { title: 'Solar energy review', url: 'https://example.com/solar', snippet: 'Independent evidence' },
+      { title: 'Redirected', url: 'https://other.com/article', snippet: 'Detail' },
+    ]);
+  });
+  it('falls back from a Google challenge to Bing with a custom chain', async () => {
+    chromeSendMessageMock.mockReset();
+    chromeSendMessageMock
+      .mockResolvedValueOnce({ ok: true, html: '<html>unusual traffic captcha</html>' })
+      .mockResolvedValueOnce({ ok: true, html: makeBingResultHtml([
+        { title: 'Solar energy evidence', url: 'https://example.com/solar-energy', snippet: 'Solar energy source overview' },
+      ]) });
+    const result = await searchWithDefaultProviders('solar energy', 0, () => {}, { providers: ['google', 'bing'] });
+    expect(result.provider).toBe('Bing');
+    expect(chromeSendMessageMock.mock.calls[0][0].url).toContain('www.google.com/search');
+    expect(chromeSendMessageMock.mock.calls[1][0].url).toContain('www.bing.com/search');
   });
 });

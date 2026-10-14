@@ -83,6 +83,26 @@ describe("SettingsPanel integration", () => {
     cleanup();
   });
 
+  it("persists automation switches and offers Google first by default", async () => {
+    const { target, cleanup } = renderSvelte(SettingsPanel);
+    target.querySelector(".bds-advanced-toggle").click();
+    await flushUi();
+    for (const key of ["autoContinue", "deepResearchAutoAgree", "hideAutoPromptInsertion"]) {
+      const input = target.querySelector(`#bds-${key}`);
+      expect(input.checked).toBe(true);
+      input.click();
+    }
+    expect(target.querySelector(".bds-search-provider-label").textContent).toContain("Google");
+    await flushUi();
+    target.querySelector("#bds-save-settings").click();
+    await flushUi();
+    expect(chrome.storage.local.set).toHaveBeenCalledWith(expect.objectContaining({
+      bds_settings: expect.objectContaining({ autoContinue: false, deepResearchAutoAgree: false, hideAutoPromptInsertion: false,
+        searchProviders: ["google", "bing", "ddg-lite", "ddg-html"] }),
+    }));
+    cleanup();
+  });
+
   it("toggles github token visibility and clears the token", async () => {
     const { target, cleanup } = renderSvelte(SettingsPanel);
 

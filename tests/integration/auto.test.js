@@ -108,6 +108,30 @@ describe("auto integration", () => {
     await expect(sendResult).resolves.toBe(true);
   });
 
+  it("conceals automated JSON only while sending, then restores editor styles", async () => {
+    const { injectPureTextAndSend } = await importAutoModule();
+    const editor = document.querySelector("#chat-input");
+    editor.style.color = "red";
+    const send = injectPureTextAndSend('<BetterDeepSeek>{"evidence": []}</BetterDeepSeek>');
+    expect(editor.classList.contains("bds-auto-inserting")).toBe(true);
+    await vi.advanceTimersByTimeAsync(600);
+    await expect(send).resolves.toBe(true);
+    expect(editor.classList.contains("bds-auto-inserting")).toBe(false);
+    expect(editor.style.color).toBe("red");
+  });
+
+  it("reveals failed automatic sends for recovery", async () => {
+    const { injectPureTextAndSend } = await importAutoModule();
+    document.querySelector("button").setAttribute("aria-disabled", "true");
+    const editor = document.querySelector("#chat-input");
+    const send = injectPureTextAndSend("Service JSON");
+    expect(editor.classList.contains("bds-auto-inserting")).toBe(true);
+    await vi.runAllTimersAsync();
+    await expect(send).resolves.toBe(false);
+    expect(editor.classList.contains("bds-auto-inserting")).toBe(false);
+    expect(editor.value).toBe("Service JSON");
+  });
+
   it("uses inline text instead of full file content when no native file input exists", async () => {
     document.body.innerHTML = `
       <div id="composer">
@@ -815,7 +839,7 @@ describe("auto integration", () => {
       "test query",
       3,
       expect.any(Function),
-      { providers: ["ddg-lite", "ddg-html", "bing"] }
+      { providers: ["google", "bing", "ddg-lite", "ddg-html"] }
     );
     expect(input.files).toHaveLength(1);
     expect(editor.value).toContain("Search Result");

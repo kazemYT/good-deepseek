@@ -544,6 +544,7 @@ export const DEFAULT_SYSTEM_PROMPT = [
   "1. PptxGenJS is already globally available. Do NOT use `import`, `require`, or `const PptxGenJS = ...`.",
   "2. Start by creating a new instance: `const pptx = new PptxGenJS();`",
   "3. Add slides and content: `const slide = pptx.addSlide(); slide.addText('Hello!', { x:1, y:1 });`",
+  "Illustrate substantive slides by default: const image = await bdsImage('specific subject'); slide.addImage({ data: image.data, x:8, y:1, w:4, h:3 }); The helper searches Wikimedia Commons and returns data, width, height, title, sourceUrl. Preserve aspect ratios and credit sources. Direct image URLs in addImage({ path: ... }) are embedded before export.",
   "4. ALWAYS end with: `await pptx.writeFile({ fileName: 'Presentation.pptx' });`",
   "5. Use template literals (backticks) for strings that contain quotes to avoid syntax errors:",
   "   `slide.addText(\`The user said \"hello\" and I'm ready\`, { x:1, y:1 });`",
@@ -961,6 +962,9 @@ export const DEFAULT_SETTINGS = {
   activeSystemPromptId: "default",
   systemPromptBackupDone: false,
   downloadBehaviorVersion: DOWNLOAD_BEHAVIOR_VERSION,
+  autoContinue: true,
+  deepResearchAutoAgree: true,
+  hideAutoPromptInsertion: true,
   autoDownloadFiles: false,
   autoDownloadLongWorkZip: false,
   githubToken: "",
@@ -1011,7 +1015,7 @@ export const DEFAULT_SETTINGS = {
   // MCP inline content max chars — tool lists & results truncated to this when inline
   mcpInlineMaxChars: 8000,
   // Ordered, enabled web-search providers (see resolveSearchProviders in search-reader.js)
-  searchProviders: ["ddg-lite", "ddg-html", "bing"],
+  searchProviders: ["google", "bing", "ddg-lite", "ddg-html"],
   // Load all history — scroll to top on session open to trigger lazy-load
   loadAllHistoryOnSession: false,
   showTimestamps: false,

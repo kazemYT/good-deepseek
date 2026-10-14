@@ -40,6 +40,18 @@ const SEARCH_FETCH_OPTIONS = {
 
 const SEARCH_PROVIDERS = [
   {
+    id: "google",
+    name: "Google",
+    url: query => "https://www.google.com/search?gbv=1&num=10&q=" + encodeURIComponent(query),
+    parse: parseGoogleSearchResults,
+  },
+  {
+    id: "bing",
+    name: "Bing",
+    url: (query) => BING_SEARCH_URL + encodeURIComponent(query),
+    parse: parseBingSearchResults,
+  },
+  {
     id: "ddg-lite",
     name: "DuckDuckGo Lite",
     url: (query) => DUCKDUCKGO_SEARCH_URL + encodeURIComponent(query),
@@ -51,12 +63,6 @@ const SEARCH_PROVIDERS = [
     url: (query) => DUCKDUCKGO_HTML_SEARCH_URL + encodeURIComponent(query),
     parse: parseDuckDuckGoSearchResults,
   },
-  {
-    id: "bing",
-    name: "Bing",
-    url: (query) => BING_SEARCH_URL + encodeURIComponent(query),
-    parse: parseBingSearchResults,
-  },
 ];
 
 /**
@@ -64,6 +70,7 @@ const SEARCH_PROVIDERS = [
  * locale keys (camelCase) can't drift apart again.
  */
 const PROVIDER_LABEL_KEYS = {
+  "google": "settings.searchProvider.google",
   "ddg-lite": "settings.searchProvider.ddgLite",
   "ddg-html": "settings.searchProvider.ddgHtml",
   "bing": "settings.searchProvider.bing",
@@ -400,9 +407,37 @@ function parseBingSearchResults(html) {
   return results;
 }
 
+/** Google desktop and basic/mobile result blocks; ignore navigation/ads. */
+export function parseGoogleSearchResults(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const results = [];
+  const seen = new Set();
+  for (const heading of doc.querySelectorAll("h3, .BNeawe.vvjwJb")) {
+    const link = heading.closest("a[href]") || heading.querySelector("a[href]");
+    if (!link || link.closest('[data-text-ad], #tads, #bottomads')) continue;
+    let url;
+    try {
+      url = new URL(link.getAttribute("href"), "https://www.google.com");
+      if (url.pathname === "/url" && /(^|\.)google\.com$/.test(url.hostname)) {
+        url = new URL(url.searchParams.get("q") || url.searchParams.get("url"));
+      }
+    } catch { continue; }
+    if (!isHttpUrl(url.href) || /(^|\.)google\.[a-z.]+$/.test(url.hostname) || seen.has(url.href)) continue;
+    const title = cleanSearchText(heading.textContent);
+    if (!title) continue;
+    const block = heading.closest(".MjjYud, .g, .Gx5Zad") || link.parentElement?.parentElement;
+    const snippet = cleanSearchText(block?.querySelector(".VwiC3b, .IsZvec, .aCOpRe, .s3v9rd, .BNeawe.s3v9rd")?.textContent);
+    seen.add(url.href);
+    results.push({ title, url: url.href, snippet });
+  }
+  return results;
+}
+
 function parseSearchResults(html) {
   const duckDuckGoResults = parseDuckDuckGoSearchResults(html);
-  return duckDuckGoResults.length > 0 ? duckDuckGoResults : parseBingSearchResults(html);
+  if (duckDuckGoResults.length) return duckDuckGoResults;
+  const bingResults = parseBingSearchResults(html);
+  return bingResults.length ? bingResults : parseGoogleSearchResults(html);
 }
 
 function isSearchChallengePage(html, status) {
