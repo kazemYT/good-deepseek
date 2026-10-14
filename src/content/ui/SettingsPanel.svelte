@@ -227,6 +227,9 @@
   let processGitignoreOnUpload = $state(Boolean(appState.settings.processGitignoreOnUpload));
   let injectSystemDateTime = $state(Boolean(appState.settings.injectSystemDateTime));
   let skipDeletionConfirmation = $state(Boolean(appState.settings.skipDeletionConfirmation));
+  let autoContinue = $state(Boolean(appState.settings.autoContinue));
+  let deepResearchAutoAgree = $state(Boolean(appState.settings.deepResearchAutoAgree));
+  let hideAutoPromptInsertion = $state(Boolean(appState.settings.hideAutoPromptInsertion));
   let deepResearchDeepFetch = $state(Number(appState.settings.deepResearchDeepFetch) ?? 1);
   let deepResearchContextGuardEnabled = $state(Boolean(appState.settings.deepResearchContextGuardEnabled));
   let deepResearchContextLimitTokens = $state(Number(appState.settings.deepResearchContextLimitTokens) || 128000);
@@ -469,6 +472,7 @@
       disableMemory, htmlToMarkdownMaxDepth, maxChatSessions,
       tokenPriceDisplay, showTimestamps, projectRagEnabled, projectRagLimit,
       processGitignoreOnUpload, injectSystemDateTime, skipDeletionConfirmation,
+      autoContinue, deepResearchAutoAgree, hideAutoPromptInsertion,
       deepResearchDeepFetch,
       searchProviders: enabledSearchProviderIds(),
       mcpInlineMaxChars,
@@ -1021,6 +1025,9 @@
     loadAllHistoryOnSession = Boolean(appState.settings.loadAllHistoryOnSession);
     projectRagEnabled = Boolean(appState.settings.projectRagEnabled);
     projectRagLimit = Number(appState.settings.projectRagLimit) || 5;
+    autoContinue = Boolean(appState.settings.autoContinue);
+    deepResearchAutoAgree = Boolean(appState.settings.deepResearchAutoAgree);
+    hideAutoPromptInsertion = Boolean(appState.settings.hideAutoPromptInsertion);
     deepResearchDeepFetch = Number(appState.settings.deepResearchDeepFetch) ?? 1;
     // Assigned before the rows are rebuilt: the builder reads mcpServers to
     // include MCP-backed search providers.
@@ -1274,6 +1281,9 @@
     appState.settings.processGitignoreOnUpload = processGitignoreOnUpload;
     appState.settings.injectSystemDateTime = injectSystemDateTime;
     appState.settings.skipDeletionConfirmation = skipDeletionConfirmation;
+    appState.settings.autoContinue = autoContinue;
+    appState.settings.deepResearchAutoAgree = deepResearchAutoAgree;
+    appState.settings.hideAutoPromptInsertion = hideAutoPromptInsertion;
     appState.settings.deepResearchDeepFetch = Math.max(0, Math.min(5, Math.round(Number(deepResearchDeepFetch) || 0)));
     // Never persist an empty provider list — fall back to the full default order.
     const enabledProviders = enabledSearchProviderIds();
@@ -2281,6 +2291,18 @@
     </button>
     <div class="bds-sub-content" class:open={subResearchOpen}>
       <div class="bds-sub-inner">
+        <div class="bds-toggle-row">
+          <label class="bds-toggle-label" for="bds-autoContinue">{t('settings.autoContinue')}</label>
+          <label class="bds-switch"><input id="bds-autoContinue" type="checkbox" bind:checked={autoContinue} /><span class="bds-switch-track"></span></label>
+        </div>
+        <div class="bds-toggle-row">
+          <label class="bds-toggle-label" for="bds-deepResearchAutoAgree">{t('settings.deepResearchAutoAgree')}</label>
+          <label class="bds-switch"><input id="bds-deepResearchAutoAgree" type="checkbox" bind:checked={deepResearchAutoAgree} /><span class="bds-switch-track"></span></label>
+        </div>
+        <div class="bds-toggle-row">
+          <label class="bds-toggle-label" for="bds-hideAutoPromptInsertion">{t('settings.hideAutoPromptInsertion')}</label>
+          <label class="bds-switch"><input id="bds-hideAutoPromptInsertion" type="checkbox" bind:checked={hideAutoPromptInsertion} /><span class="bds-switch-track"></span></label>
+        </div>
         <div class="bds-toggle-row" style="flex-direction: column; align-items: flex-start; gap: 6px;">
           <span class="bds-toggle-label">Deep Fetch per Search</span>
           <input id="bds-deep-research-deep-fetch" type="number" min="0" max="5" step="1" class="bds-input" style="width: 80px; box-sizing: border-box;" bind:value={deepResearchDeepFetch} />

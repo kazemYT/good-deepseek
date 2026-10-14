@@ -44,6 +44,8 @@ const {
 
 describe("Deep Research state machine", () => {
   beforeEach(() => {
+    // This suite exercises manual planning/approval; auto-agree is tested separately.
+    state.settings.deepResearchAutoAgree = false;
     state.deepResearch.enabled = false;
     state.deepResearch.pendingRun = null;
     state.deepResearch.runs = [];

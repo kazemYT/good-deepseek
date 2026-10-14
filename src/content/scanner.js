@@ -2,6 +2,7 @@
  * DOM observation and page scanning.
  */
 
+import { tryAutoContinue } from "./auto-continue.js";
 import state, { withObserverPaused, CHAT_OBSERVER_OPTIONS } from "./state.js";
 import { LONG_WORK_STALE_MS } from "../lib/constants.js";
 import { devLog } from "../lib/dev-log.js";
@@ -371,6 +372,7 @@ export function scheduleScan() {
  * Central scan dispatcher. Called when the debounce timer fires.
  */
 function scanPage() {
+  tryAutoContinue();
   withObserverPaused(() => {
     if (
       state.longWork.active &&

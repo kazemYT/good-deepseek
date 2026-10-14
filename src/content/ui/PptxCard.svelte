@@ -1,4 +1,6 @@
 <script>
+  import { searchImages } from "../../lib/wikimedia-commons.js";
+  import { onDestroy } from "svelte";
   import { t } from "../../lib/i18n.svelte.js";
   import { triggerBlobDownload } from "../../lib/utils/download.js";
   import { handleAutoErrorReport } from "../auto.js";
@@ -27,6 +29,9 @@
     return name;
   });
 
+  let cleanupGeneration = () => {};
+  onDestroy(() => cleanupGeneration());
+
   async function handleDownload() {
     if (isProcessing) return;
     
@@ -37,9 +42,30 @@
       
       const requestId = Math.random().toString(36).substring(7);
       
-      const messageHandler = (event) => {
-        if (event.data.id !== requestId) return;
-        
+      const messageHandler = async (event) => {
+        if (event.source !== iframe?.contentWindow || event.data?.id !== requestId) return;
+        if (event.data.type === "PPTX_IMAGE_REQUEST") {
+          const { imageId, query } = event.data;
+          try {
+            if (typeof query !== "string" || !query.trim() || query.length > 2048) throw new Error("Invalid image query.");
+            const found = /^https?:\/\//i.test(query) ? null : await searchImages({ query, width: 1200 });
+            const url = found?.thumbUrl || (/^https?:\/\//i.test(query) ? query : "");
+            if (!url) throw new Error(`No illustration found for: ${query}`);
+            const result = await chrome.runtime.sendMessage({ type: "bds-fetch-presentation-image", url });
+            if (!result?.ok) throw new Error(result?.error || "Image download failed.");
+            const dimensions = await new Promise((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+              image.onerror = () => reject(new Error("Invalid image data."));
+              image.src = result.data;
+            });
+            iframe?.contentWindow?.postMessage({ type: "PPTX_IMAGE_RESULT", id: requestId, imageId,
+              image: { data: result.data, ...dimensions, title: found?.title || query, sourceUrl: found?.descriptionUrl || url } }, "*");
+          } catch (error) {
+            iframe?.contentWindow?.postMessage({ type: "PPTX_IMAGE_RESULT", id: requestId, imageId, error: error.message }, "*");
+          }
+          return;
+        }
         if (event.data.type === "PPTX_RESULT") {
           status = "Downloading...";
           statusColor = "var(--bds-text-tertiary)";
@@ -61,11 +87,21 @@
       };
 
       const finish = () => {
+        clearTimeout(timeout);
         window.removeEventListener("message", messageHandler);
         isProcessing = false;
         setTimeout(() => { if (!isProcessing) status = ""; }, 3000);
       };
 
+      const timeout = setTimeout(() => {
+        status = "Generation timed out. Please retry.";
+        statusColor = "#ef4444";
+        finish();
+      }, 120000);
+      cleanupGeneration = () => {
+        clearTimeout(timeout);
+        window.removeEventListener("message", messageHandler);
+      };
       window.addEventListener("message", messageHandler);
       
       // Send to sandbox
@@ -78,6 +114,7 @@
       status = "Generating PPTX...";
 
     } catch (err) {
+      cleanupGeneration();
       console.error("PPTX Sandbox Bridge Error:", err);
       status = "Bridge Error";
       statusColor = "#ef4444";

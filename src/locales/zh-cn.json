@@ -64,6 +64,9 @@
       "sectionMcpServers": "MCP 服务器"
     },
     "settings": {
+    "autoContinue": "自动继续回复",
+    "deepResearchAutoAgree": "自动同意 Deep Research 计划",
+    "hideAutoPromptInsertion": "隐藏自动插入的系统文本和 JSON",
       "generalSettings": "常规设置",
       "systemPrompts": "系统提示词",
       "defaultPromptName": "默认",
@@ -160,6 +163,7 @@
       "providerMoveUp": "上移搜索引擎",
       "providerMoveDown": "下移搜索引擎",
       "searchProvider": {
+      "google": "Google",
         "ddgLite": "DuckDuckGo (Lite)",
         "ddgHtml": "DuckDuckGo (HTML)",
         "bing": "Bing"

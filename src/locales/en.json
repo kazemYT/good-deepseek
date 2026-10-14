@@ -64,6 +64,9 @@
       "sectionMcpServers": "MCP Servers"
     },
     "settings": {
+    "autoContinue": "Auto-continue replies",
+    "deepResearchAutoAgree": "Auto-agree to Deep Research plans",
+    "hideAutoPromptInsertion": "Hide automatic service-text insertion",
       "generalSettings": "General Settings",
       "systemPrompts": "System Prompts",
       "defaultPromptName": "Default (Hidden)",
@@ -160,6 +163,7 @@
       "providerMoveUp": "Move provider up",
       "providerMoveDown": "Move provider down",
       "searchProvider": {
+      "google": "Google",
         "ddgLite": "DuckDuckGo (Lite)",
         "ddgHtml": "DuckDuckGo (HTML)",
         "bing": "Bing"

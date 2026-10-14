@@ -722,6 +722,7 @@ class WebViewBridge(
             val payload = JSONObject(payloadJson ?: "{}")
             when (val type = payload.optString("type")) {
                 "bds-fetch-url" -> handleFetchUrl(payload, response)
+                "bds-fetch-presentation-image" -> handleFetchPresentationImage(payload, response)
                 "bds-fetch-github-zip" -> handleFetchGithubZip(payload, response)
                 "bds-fetch-github-commits" -> handleFetchGithubCommits(payload, response)
                 "bds-get-youtube-transcript" -> {
@@ -741,6 +742,33 @@ class WebViewBridge(
             response.put("error", "Bridge error: ${t.message ?: t.javaClass.simpleName}")
         }
         return response.toString()
+    }
+
+    private fun handleFetchPresentationImage(payload: JSONObject, response: JSONObject) {
+        val url = normalizeHttpUrl(payload.optString("url"))
+                ?: throw IllegalArgumentException("Expected an http or https image URL.")
+        val parsed = url.toHttpUrlOrNull()
+        require(parsed != null && parsed.username.isEmpty() && parsed.password.isEmpty()) {
+            "Image URLs must not contain credentials."
+        }
+        val request = Request.Builder().url(url)
+                .header("User-Agent", DEFAULT_FETCH_USER_AGENT).get().build()
+        val client = httpClient.newBuilder().callTimeout(20, TimeUnit.SECONDS).build()
+        client.newCall(request).execute().use { resp ->
+            require(resp.isSuccessful) { "Image download failed (${resp.code})." }
+            val mime = resp.header("Content-Type").orEmpty().substringBefore(';').lowercase()
+            require(mime in setOf("image/png", "image/jpeg", "image/gif")) {
+                "Use a direct PNG, JPEG or GIF image URL."
+            }
+            val body = resp.body ?: throw IllegalArgumentException("Empty image.")
+            val limit = 10L * 1024 * 1024
+            require(body.contentLength() <= limit) { "Image is too large (10 MB maximum)." }
+            val result = body.byteStream().use { readBoundedBytes(it, limit) }
+            require(!result.overflowed) { "Image is too large (10 MB maximum)." }
+            require(result.bytes.isNotEmpty()) { "Empty image." }
+            response.put("ok", true)
+            response.put("data", "data:$mime;base64," + java.util.Base64.getEncoder().encodeToString(result.bytes))
+        }
     }
 
     private fun handleFetchUrl(payload: JSONObject, response: JSONObject) {

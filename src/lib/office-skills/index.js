@@ -10,7 +10,7 @@ const OFFICE_KEYWORDS = [
   },
   {
     name: "pptx",
-    keywords: ["powerpoint", "presentation", "slide", "pptx", ".pptx", "slideshow", "deck", "power point"],
+    keywords: ["powerpoint", "presentation", "slide", "pptx", ".pptx", "slideshow", "deck", "power point", "презентац", "слайд", "доклад со слайдами"],
     skill: PPTX_SKILL,
   },
   {

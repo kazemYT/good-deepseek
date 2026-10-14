@@ -1426,12 +1426,26 @@ export function initDeepResearchRuntime() {
 
   window.addEventListener("bds:deep-research-plan-received", (event) => {
     const detail = normalizeEventDetail(event.detail);
+    const existing = findRunById(detail.runId);
+    // History/replayed plans must not restart completed, cancelled or running work.
+    if (existing && !["idle", "planning", "awaiting_revision"].includes(existing.status)) return;
+    const canAutoAgree = Boolean(existing && state.deepResearch.enabled &&
+      existing.conversationId === getCurrentConversationId() &&
+      ["planning", "awaiting_revision"].includes(existing.status));
     const run = ensureRun(detail.runId, detail.conversationId);
     run.plan = detail.plan || null;
     setStatus(run, "planning");
     upsertRun(run);
     emitRunState(run);
     void persistRuns(state.deepResearch.runs);
+    if (canAutoAgree && state.settings.deepResearchAutoAgree && !detail.error &&
+        Array.isArray(run.plan?.steps) && run.plan.steps.length > 0 &&
+        run.plan.steps.every(step => step && ["search", "fetch"].includes(step.action) &&
+          typeof step.query === "string" && step.query.trim())) {
+      window.dispatchEvent(new CustomEvent("bds:deep-research-approve", {
+        detail: { runId: run.id, conversationId: run.conversationId, plan: run.plan },
+      }));
+    }
   });
 
   window.addEventListener("bds:deep-research-status-received", (event) => {
@@ -1474,7 +1488,9 @@ export function initDeepResearchRuntime() {
   window.addEventListener("bds:deep-research-approve", (event) => {
     const detail = normalizeEventDetail(event.detail);
     const run = ensureRun(detail.runId, detail.conversationId);
+    if (run.status !== "planning" || run.execution?.managed) return;
     run.plan = detail.plan || run.plan;
+    if (!run.plan || !Array.isArray(run.plan.steps)) return;
 
     // Initialize managed execution from the approved plan
     initManagedExecution(run);
